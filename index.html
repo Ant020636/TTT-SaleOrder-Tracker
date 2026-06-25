@@ -1,0 +1,1491 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ติดตามสถานะรับสินค้า — PR Tracker v2</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+:root{
+  --navy:#1E3A5F; --navy-d:#142A47; --steel:#5A6472; --line:#D8DCE0;
+  --paper:#F4F5F2; --card:#FFFFFF; --accent:#D9560B; --accent-soft:#FBEDE4;
+  --green:#0F6E56; --green-soft:#E5F5EF;
+  --red:#B42318; --red-soft:#FBEAE8;
+  --yellow:#92400E; --yellow-soft:#FEF3C7;
+  --blue:#1D4ED8; --blue-soft:#E8EEFC;
+  --purple:#6D28D9; --purple-soft:#EDE9FE;
+  --code:#2D3A8C;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:var(--paper);color:#1F2937;font-size:14px}
+
+/* ── Top bar ── */
+#topbar{background:var(--navy);color:#fff;padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+#topbar h1{font-size:16px;font-weight:700;letter-spacing:.2px}
+#topbar .sub{font-size:11px;color:#9DB6D4}
+#topbar .spacer{flex:1}
+.btn{border:none;border-radius:7px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;transition:filter .15s}
+.btn:hover{filter:brightness(1.08)}
+.btn-cloud{background:#2E6DB4;color:#fff}
+.btn-ghost{background:rgba(255,255,255,.14);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-outline{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+.btn-sm{padding:4px 10px;font-size:11.5px;border-radius:6px}
+
+/* ── Role switcher ── */
+#role-bar{background:var(--navy-d);padding:6px 18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#role-bar span.lbl{font-size:11px;color:#9DB6D4;font-weight:600;white-space:nowrap}
+.role-btn{border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;background:rgba(255,255,255,.1);color:#C5D9EF;transition:.15s}
+.role-btn:hover{background:rgba(255,255,255,.2)}
+.role-btn.active{color:#fff}
+.role-btn[data-role="sale"].active{background:#0F6E56}
+.role-btn[data-role="admin"].active{background:#1D4ED8}
+.role-btn[data-role="store"].active{background:#D9560B}
+.role-btn[data-role="crimp"].active{background:#6D28D9}
+
+/* ── Layout ── */
+#layout{display:flex;min-height:calc(100vh - 88px)}
+#rail{width:310px;min-width:310px;background:var(--card);border-right:1px solid var(--line);display:flex;flex-direction:column;max-height:calc(100vh - 88px);position:sticky;top:0}
+#workspace{flex:1;padding:16px 20px;min-width:0;overflow-y:auto;max-height:calc(100vh - 88px)}
+
+/* ── Rail ── */
+#rail .rail-head{padding:10px 13px;border-bottom:1px solid var(--line)}
+#rail .rail-head .t{font-size:12px;font-weight:700;color:var(--navy);margin-bottom:7px;display:flex;align-items:center;justify-content:space-between}
+#qt-search{width:100%;border:1.5px solid var(--line);border-radius:7px;padding:7px 9px;font-size:13px;font-family:'Sarabun',sans-serif}
+#qt-search:focus{outline:none;border-color:var(--navy)}
+#qt-list{flex:1;overflow-y:auto}
+.qt-item{padding:8px 13px;border-bottom:1px solid #EEF0F2;cursor:pointer}
+.qt-item:hover{background:#F4F7FB}
+.qt-item.active{background:var(--accent-soft);border-left:3px solid var(--accent);padding-left:10px}
+.qt-item .ref{font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;color:var(--code)}
+.qt-item .co{font-size:12px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qt-item .meta{font-size:10px;color:var(--steel);display:flex;gap:7px;margin-top:2px;flex-wrap:wrap}
+.qt-item .st{font-size:10px;border-radius:4px;padding:0 5px;font-weight:600}
+#rail-status{padding:7px 13px;font-size:11px;color:var(--steel);border-top:1px solid var(--line)}
+
+/* ── Selected banner ── */
+#sel-banner{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 15px;margin-bottom:12px;display:none}
+#sel-banner .row1{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+#sel-banner .ref{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--code)}
+#sel-banner .co{font-size:14px;font-weight:600}
+#sel-banner .meta{font-size:11px;color:var(--steel);margin-top:3px}
+
+/* ── Remark box ── */
+#remark-box{display:none;background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:9px;padding:9px 14px;margin-bottom:12px;font-size:12.5px;color:#78350F}
+#remark-box .rb-label{font-size:10.5px;font-weight:700;color:#92400E;margin-bottom:3px;text-transform:uppercase;letter-spacing:.3px}
+
+/* ── Summary cards ── */
+#summary-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.sum-card{flex:1;min-width:100px;background:var(--card);border:1.5px solid var(--line);border-radius:9px;padding:8px 12px;text-align:center}
+.sum-card .num{font-size:22px;font-weight:700;line-height:1.1}
+.sum-card .lbl{font-size:10.5px;color:var(--steel);margin-top:2px}
+.sum-card.s-wait .num{color:var(--yellow)}
+.sum-card.s-store .num{color:var(--green)}
+.sum-card.s-crimp .num{color:var(--purple)}
+.sum-card.s-all{background:var(--green-soft);border-color:var(--green)}
+.sum-card.s-all .num{color:var(--green)}
+
+/* ── INV badge ── */
+#inv-badge{display:none;border-radius:9px;padding:9px 15px;margin-bottom:12px;font-size:13.5px;font-weight:700;text-align:center}
+
+/* ── Action panel ── */
+.action-panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 15px;margin-bottom:12px;display:none}
+.action-panel .ap-title{font-size:12px;font-weight:700;color:var(--navy);margin-bottom:9px}
+.ap-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.ap-fld{flex:1;min-width:160px}
+.ap-fld label{font-size:10.5px;font-weight:600;color:var(--steel);display:block;margin-bottom:3px}
+.ap-fld input{width:100%;border:1.5px solid var(--line);border-radius:7px;padding:6px 8px;font-size:13px;font-family:'Sarabun',sans-serif}
+.ap-fld input:focus{outline:none;border-color:var(--navy)}
+
+/* ── Tracker table ── */
+.tbl-wrap{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;overflow-x:auto}
+table.tracker{width:100%;border-collapse:collapse;font-size:12.5px;min-width:600px}
+table.tracker th{background:var(--navy);color:#fff;padding:7px 9px;font-size:11px;font-weight:600;text-align:left;white-space:nowrap}
+table.tracker td{border-bottom:1px solid #EEF0F2;padding:7px 9px;vertical-align:middle}
+table.tracker tr:last-child td{border-bottom:none}
+table.tracker tr:hover td{background:#F8FAFC}
+/* row highlight by store status */
+table.tracker tr.row-done-both td{background:#F0FBF6}
+table.tracker tr.row-done-both:hover td{background:#E5F5EF}
+.code-cell{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--code);white-space:nowrap}
+.qty-cell{text-align:right;white-space:nowrap;color:var(--steel);font-size:12px}
+.desc-cell{max-width:220px}
+
+/* ── Status pill ── */
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;border-radius:20px;padding:2px 9px;white-space:nowrap}
+.pill-wait{background:var(--yellow-soft);color:var(--yellow);border:1px solid #FDE68A}
+.pill-arrived{background:var(--green-soft);color:var(--green);border:1px solid #86EFAC}
+.pill-partial{background:var(--blue-soft);color:var(--blue);border:1px solid #93C5FD}
+.pill-success{background:var(--purple-soft);color:var(--purple);border:1px solid #C4B5FD}
+.pill-pending{background:#F3F4F6;color:var(--steel);border:1px solid #D1D5DB}
+.pill-na{background:#F9FAFB;color:#9CA3AF;border:1px solid #E5E7EB;font-style:italic}
+
+/* ── Crimp buttons (per row) ── */
+.crimp-btns{display:flex;gap:4px;flex-wrap:nowrap}
+.cb{border:none;border-radius:5px;padding:3px 9px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;transition:.15s;white-space:nowrap}
+.cb:hover{filter:brightness(.9)}
+.cb-success{background:var(--purple);color:#fff}
+.cb-pending{background:#E5E7EB;color:var(--steel)}
+.cb-na{background:#F3F4F6;color:#9CA3AF;border:1px solid #E5E7EB}
+
+/* ── Note cell ── */
+.note-input{width:100%;border:1.5px solid var(--line);border-radius:5px;padding:4px 6px;font-size:11.5px;font-family:'Sarabun',sans-serif;background:#fff;min-width:100px}
+.note-input:focus{outline:none;border-color:var(--navy)}
+.note-ro{font-size:11.5px;color:var(--steel);font-style:italic}
+
+/* ── Stamp ── */
+.stamp{font-size:10px;color:#9CA3AF;margin-top:2px}
+
+/* ── Section divider (2-col header) ── */
+.th-group{text-align:center !important;border-left:2px solid rgba(255,255,255,.2)}
+
+/* ── role hint chip ── */
+.role-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;border-radius:6px;padding:3px 9px;margin-bottom:10px}
+.rc-sale{background:var(--green-soft);color:var(--green)}
+.rc-admin{background:var(--blue-soft);color:var(--blue)}
+.rc-store{background:var(--accent-soft);color:var(--accent)}
+.rc-crimp{background:var(--purple-soft);color:var(--purple)}
+
+/* empty */
+.empty-state{padding:40px 20px;text-align:center;color:var(--steel);font-size:13px}
+.empty-state .icon{font-size:36px;margin-bottom:10px}
+
+/* tbl footer */
+.tbl-footer{padding:9px 13px;border-top:1px solid var(--line);background:#F9FAFB;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* toast */
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy-d);color:#fff;padding:9px 18px;border-radius:9px;font-size:13px;display:none;z-index:999;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+
+/* modal */
+#modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.38);z-index:500;align-items:center;justify-content:center}
+#modal-bg.show{display:flex}
+#modal{background:#fff;border-radius:12px;padding:20px 22px;min-width:300px;max-width:440px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+#modal h3{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:11px}
+.m-fld{margin-bottom:9px}
+.m-fld label{font-size:10.5px;font-weight:600;color:var(--steel);display:block;margin-bottom:3px}
+.m-fld input,.m-fld select,.m-fld textarea{width:100%;border:1.5px solid var(--line);border-radius:7px;padding:7px 9px;font-size:13px;font-family:'Sarabun',sans-serif}
+.m-fld input:focus,.m-fld select:focus,.m-fld textarea:focus{outline:none;border-color:var(--navy)}
+.m-actions{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+
+/* supplier dropdown in table */
+.sup-cell{display:flex;flex-direction:column;gap:3px}
+.sup-select{border:1.5px solid var(--line);border-radius:6px;padding:4px 6px;font-size:12px;font-family:'Sarabun',sans-serif;background:#fff;width:100%;min-width:120px;color:#1F2937}
+.sup-select:focus{outline:none;border-color:var(--navy)}
+.sup-select.has-val{border-color:var(--green);background:var(--green-soft);color:var(--green);font-weight:600}
+.sup-select.is-ttt{border-color:#D97706;background:#FEF3C7;color:#92400E}
+.note-extra{border:1.5px solid var(--line);border-radius:5px;padding:3px 6px;font-size:11px;font-family:'Sarabun',sans-serif;background:#fff;width:100%}
+.note-extra:focus{outline:none;border-color:var(--navy)}
+.sup-loading{font-size:11px;color:var(--steel);font-style:italic}
+.sup-input{border:1.5px solid var(--accent);border-radius:6px;padding:4px 6px;font-size:12px;font-family:'Sarabun',sans-serif;background:#fff;width:100%;min-width:120px;color:var(--accent);font-weight:600}
+.sup-input:focus{outline:none;border-color:var(--navy)}
+.sup-input::placeholder{font-weight:400;color:#B0B5BB}
+
+/* ── Activate panel (admin) ── */
+#activate-panel{display:none;background:#FFFBEB;border:1.5px solid #FCD34D;border-radius:10px;padding:12px 15px;margin-bottom:12px}
+#activate-panel .ap-title{font-size:12.5px;font-weight:700;color:#92400E;margin-bottom:8px}
+#activate-panel .ap-desc{font-size:11.5px;color:#78350F;margin-bottom:10px}
+.crimp-flag-cell{text-align:center}
+.crimp-flag-cell input[type=checkbox]{width:16px;height:16px;cursor:pointer}
+
+/* ── Active badge / status strip ── */
+.active-strip{display:flex;align-items:center;gap:8px;background:var(--blue-soft);border:1px solid #93C5FD;border-radius:9px;padding:8px 14px;margin-bottom:12px;font-size:12px;font-weight:600;color:var(--blue)}
+.active-strip.is-closed{background:var(--green-soft);border-color:#86EFAC;color:var(--green)}
+
+/* ── Dashboard (pending jobs) ── */
+#dash-wrap{display:none}
+#dash-wrap .dash-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+#dash-wrap .dash-head .t{font-size:12.5px;font-weight:700;color:var(--navy)}
+#dash-wrap .dash-head .cnt{font-size:11px;color:var(--steel)}
+.dash-card{background:var(--card);border:0.5px solid var(--line);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:8px;transition:.12s}
+.dash-card:hover{border-color:var(--accent);background:#FFFAF7}
+.dash-card .stripe{width:5px;height:34px;border-radius:3px;flex-shrink:0}
+.dash-card .stripe.urgent{background:var(--red)}
+.dash-card .stripe.medium{background:#D97706}
+.dash-card .stripe.fresh{background:var(--line)}
+.dash-card .body{flex:1;min-width:0}
+.dash-card .row1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.dash-card .ref{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:var(--code)}
+.dash-card .co{font-size:12px;color:#374151}
+.dash-card .wait{font-size:11px;color:var(--steel);margin-top:2px}
+.dash-card .badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:7px;white-space:nowrap}
+.dash-card .badge.b-wait{background:var(--yellow-soft);color:var(--yellow)}
+.dash-card .badge.b-ready{background:var(--green-soft);color:var(--green)}
+.dash-card .badge.b-done{background:var(--green-soft);color:var(--green)}
+.dash-card .badge.b-uncertain{background:#FEE2E2;color:#B91C1C}
+.badge-stack{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.dash-card .badge.b-crimp-tag{background:var(--purple-soft);color:var(--purple);font-size:10px}
+.dash-card.is-closed{opacity:.8}
+.dash-card.is-closed:hover{border-color:var(--green);background:var(--green-soft)}
+.dash-card .stripe.done{background:var(--green)}
+.dash-empty{padding:30px 16px;text-align:center;color:var(--steel);font-size:12.5px;background:var(--card);border:1px dashed var(--line);border-radius:10px}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1E3A5F 0%,#142A47 100%);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:36px 32px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.35)">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:22px;font-weight:800;color:var(--navy);letter-spacing:.5px">TTT <span style="color:var(--accent)">CORPORATION</span></div>
+      <div style="font-size:12px;color:var(--steel);margin-top:4px">PR Tracker — ติดตามสถานะรับสินค้า</div>
+      <div style="width:36px;height:3px;background:var(--accent);border-radius:2px;margin:10px auto 0"></div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px;letter-spacing:.3px">ชื่อผู้ใช้ (USERNAME)</label>
+      <input id="login-user" type="text" autocomplete="username" placeholder="username"
+        style="width:100%;border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;font-family:'Sarabun',sans-serif;box-sizing:border-box;transition:.2s"
+        onfocus="this.style.borderColor='var(--navy)'" onblur="this.style.borderColor='var(--line)'"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-pwd').focus()">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:11px;font-weight:700;color:var(--navy);display:block;margin-bottom:5px;letter-spacing:.3px">รหัสผ่าน (PASSWORD)</label>
+      <input id="login-pwd" type="password" autocomplete="current-password" placeholder="password"
+        style="width:100%;border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;font-family:'Sarabun',sans-serif;box-sizing:border-box;transition:.2s"
+        onfocus="this.style.borderColor='var(--navy)'" onblur="this.style.borderColor='var(--line)'"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button onclick="doLogin()" id="login-btn"
+      style="width:100%;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:700;font-family:'Sarabun',sans-serif;cursor:pointer;transition:.2s"
+      onmouseover="this.style.background='var(--navy-d)'" onmouseout="this.style.background='var(--navy)'">
+      เข้าสู่ระบบ
+    </button>
+    <div id="login-err" style="display:none;margin-top:12px;background:#FEE2E2;border-radius:7px;padding:9px 12px;font-size:12.5px;color:#B91C1C;text-align:center"></div>
+  </div>
+</div>
+
+<!-- ── Top bar ── -->
+<!-- ── MAIN APP (hidden until login) ── -->
+<div id="main-app" style="display:none">
+<div id="topbar">
+  <div>
+    <h1>📦 PR Tracker — ติดตามสถานะรับสินค้า</h1>
+    <div class="sub">ใบเสนอราคา · 4 แผนก · คลัง · ห้องย้ำ · Sale · Sale Admin</div>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn btn-cloud" onclick="loadCloudList()">☁️ โหลดรายการ</button>
+  <button class="btn btn-ghost" onclick="loadByRefPrompt()">🔍 ค้นหาเลขที่</button>
+</div>
+
+<!-- ── Role bar ── -->
+<div id="role-bar">
+  <span class="lbl" id="role-bar-lbl">มุมมอง :</span>
+  <button class="role-btn active" id="rolebtn-sale"  data-role="sale"  onclick="switchRole('sale')">👔 Sale</button>
+  <button class="role-btn"        id="rolebtn-admin" data-role="admin" onclick="switchRole('admin')">🗂 Sale Admin</button>
+  <button class="role-btn"        id="rolebtn-store" data-role="store" onclick="switchRole('store')">🏭 คลัง</button>
+  <button class="role-btn"        id="rolebtn-crimp" data-role="crimp" onclick="switchRole('crimp')">🔧 ห้องย้ำ</button>
+  <span id="role-locked-label" style="display:none;font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.15);padding:5px 14px;border-radius:6px"></span>
+  <div style="flex:1"></div>
+  <span id="role-user-label" style="font-size:11px;color:#9DB6D4">ชื่อผู้ใช้: —</span>
+  <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="setUserName()">✏️ ตั้งชื่อ</button>
+  <button class="btn btn-ghost" id="btn-clear-test" style="padding:4px 10px;font-size:11px;color:#F87171" onclick="clearTestData()">🗑 ล้างข้อมูลทดสอบ</button>
+</div>
+
+<div id="layout">
+  <!-- Rail -->
+  <div id="rail">
+    <div class="rail-head">
+      <div class="t"><span>ใบเสนอราคา</span><span id="qt-count" style="color:var(--steel);font-weight:400;font-size:10.5px"></span></div>
+      <input id="qt-search" placeholder="ค้นหา เลขที่ / บริษัท…" oninput="renderQtList()">
+    </div>
+    <div id="qt-list">
+      <div style="padding:16px 13px;font-size:12px;color:var(--steel)">กด "☁️ โหลดรายการ" เพื่อดึงข้อมูล<br><br>หรือกด 🔍 เพื่อระบุเลขที่โดยตรง</div>
+    </div>
+    <div id="rail-status">ยังไม่ได้เชื่อมต่อ</div>
+  </div>
+
+  <!-- Workspace -->
+  <div id="workspace">
+
+    <!-- Dashboard: pending jobs for current role -->
+    <div id="dash-wrap">
+      <div class="dash-head">
+        <span class="t" id="dash-title">งานที่รออยู่</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="cnt" id="dash-count"></span>
+          <button class="btn btn-outline btn-sm" onclick="refreshDashboard()" id="btn-dash-refresh">🔄 รีเฟรช</button>
+        </div>
+      </div>
+      <div id="dash-list"></div>
+    </div>
+
+    <div id="empty-ws" class="empty-state">
+      <div class="icon">📋</div>
+      <div>เลือกใบเสนอราคาจากแถบซ้าย หรือจากรายการด้านบนเพื่อดูสถานะ</div>
+    </div>
+
+    <div id="main-content" style="display:none">
+
+      <!-- Back button -->
+      <button id="btn-back" class="btn btn-outline btn-sm" style="margin-bottom:10px" onclick="closeSelection()">← กลับไปแดชบอร์ด</button>
+
+      <!-- Active status strip -->
+      <div id="active-strip" class="active-strip" style="display:none"></div>
+
+      <!-- Banner -->
+      <div id="sel-banner">
+        <div class="row1"><span class="ref" id="sb-ref">—</span><span class="co" id="sb-co"></span></div>
+        <div class="meta" id="sb-meta"></div>
+      </div>
+
+      <!-- Remark box -->
+      <div id="remark-box">
+        <div class="rb-label">📝 Remark จากใบเสนอราคา</div>
+        <div id="remark-text"></div>
+      </div>
+
+      <!-- Role chip -->
+      <div id="role-chip" class="role-chip rc-sale">👔 มุมมอง Sale</div>
+
+      <!-- Activate panel (admin only) -->
+      <div id="activate-panel">
+        <div class="ap-title">🚀 Activate งาน — ยืนยันว่าลูกค้าสั่งซื้อแล้ว</div>
+        <div class="ap-desc">เลือกรายการที่ต้อง "ย้ำ" ในตาราง (ติ๊กช่อง 🔧 ต้องย้ำ) แล้วกด Activate — คลังและห้องย้ำจะเห็นงานนี้ในแดชบอร์ดทันที</div>
+        <button class="btn btn-accent" style="background:var(--accent);color:#fff" onclick="activateJob()">🚀 Activate งานนี้</button>
+      </div>
+
+      <!-- Summary cards -->
+      <div id="summary-bar"></div>
+
+      <!-- INV badge -->
+      <div id="inv-badge"></div>
+
+      <!-- Close-job panel (admin only, shown when active) -->
+      <div id="close-panel" class="action-panel">
+        <div class="ap-title">🏁 ปิดงาน — เปิด INV ให้ลูกค้าแล้ว</div>
+        <div class="ap-row">
+          <button class="btn btn-green" onclick="closeJob()">🏁 ปิดงาน / เปิด INV แล้ว</button>
+          <span style="font-size:11.5px;color:var(--steel)">ใบนี้จะหายจากแดชบอร์ดของทุกแผนก (ค้นหาเลขที่ดูย้อนหลังได้ปกติ)</span>
+        </div>
+      </div>
+
+      <!-- Action panel (store) -->
+      <div id="store-panel" class="action-panel">
+        <div class="ap-title">🏭 คลัง — อัปเดตสถานะรับสินค้า (เลือก checkbox แล้วกด)</div>
+        <div class="ap-row">
+          <div class="ap-fld">
+            <label>หมายเหตุ (lot / วันที่รับ)</label>
+            <input id="store-note" placeholder="เช่น รับ 20/6/2569 ครบ 50 ชิ้น">
+          </div>
+          <button class="btn btn-green" onclick="bulkStore('arrived')">✅ รับแล้ว</button>
+          <button class="btn" style="background:var(--blue);color:#fff" onclick="bulkStore('partial')">📦 บางส่วน</button>
+          <button class="btn btn-outline" onclick="bulkStore('waiting')">⏳ รอของ</button>
+        </div>
+      </div>
+
+      <!-- Action panel (crimp) -->
+      <div id="crimp-panel" class="action-panel">
+        <div class="ap-title">🔧 ห้องย้ำ — กดที่ปุ่มในตารางเพื่ออัปเดตทีละรายการ</div>
+        <div style="font-size:12px;color:var(--steel)">
+          <span style="background:var(--purple-soft);color:var(--purple);border-radius:5px;padding:2px 8px;font-weight:700;margin-right:6px">✅ สำเร็จ</span> ประกอบ/ย้ำเสร็จแล้ว &nbsp;·&nbsp;
+          <span style="background:#E5E7EB;color:var(--steel);border-radius:5px;padding:2px 8px;font-weight:700">⏳ รอประกอบ</span> ยังไม่ได้ทำ
+          <div style="margin-top:5px;font-size:11px;color:var(--steel)">* รายการที่แสดงคือรายการที่ Sale Admin เลือกไว้ว่าต้องย้ำเท่านั้น</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="tbl-wrap">
+        <table class="tracker">
+          <thead><tr id="tbl-head"></tr></thead>
+          <tbody id="tracker-body"></tbody>
+        </table>
+        <div class="tbl-footer">
+          <span id="tbl-foot-info" style="font-size:11px;color:var(--steel)"></span>
+          <div style="flex:1"></div>
+          <button class="btn btn-outline btn-sm" onclick="refreshTracking()">🔄 รีเฟรช</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Partial modal (store) -->
+<div id="modal-bg">
+  <div id="modal">
+    <h3>📦 รับบางส่วน — คลัง</h3>
+    <div class="m-fld"><label>รหัสสินค้า</label><input id="m-code" readonly style="background:#F3F4F6"></div>
+    <div class="m-fld"><label>จำนวนตามใบเสนอราคา</label><input id="m-total" readonly style="background:#F3F4F6"></div>
+    <div class="m-fld"><label>จำนวนที่รับมาแล้ว</label><input id="m-recv" type="number" min="0" placeholder="0"></div>
+    <div class="m-fld"><label>หมายเหตุ</label><textarea id="m-note" rows="2" placeholder="เช่น รับ lot 1 วันที่ 20/6"></textarea></div>
+    <div class="m-actions">
+      <button class="btn btn-outline" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-green" onclick="confirmPartial()">บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──
+// GAS Quotation URL — ใส่ Deployment URL ของ GAS Quotation ตรงนี้
+var GS_URL='https://script.google.com/macros/s/AKfycbwH_RBMCMRsRaA4jdLJKO8ciNZGM0OfPYa9K5e7xDgCes8O6fzgRuSsrP4LGOLo9Yif/exec';
+
+// ── STATE ──
+var QTS=[], SEL=null, TRACKING={}, ROLE='sale';
+var SELECTED_ROWS=new Set(), MODAL_TARGET=null;
+var SUPPLIER_MAP={};  // { CODE_UPPER: [{supplier, date, tttCode}, ...] }
+var JOB_META={};      // { refNo: {active:bool, closedAt, activatedBy, activatedAt} }
+
+// ── HELPERS ──
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none';},3200);}
+function fmtDT(iso){if(!iso)return'—';var d=new Date(iso);return d.toLocaleDateString('th-TH')+' '+d.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});}
+function stColor(s){
+  if(s==='อนุมัติ')return['#0F6E56','#E5F5EF'];
+  if(s==='ส่งแล้ว')return['#1D4ED8','#E8EEFC'];
+  if(s==='ยกเลิก'||s==='ไม่อนุมัติ')return['#B42318','#FBEAE8'];
+  return['#5A6472','#EEF0F2'];
+}
+
+// ── USERNAME (แยกตาม role) ──
+// คลัง → pr_username_store | ห้องย้ำ → pr_username_crimp | อื่น → pr_username
+var USERNAME_KEYS={store:'pr_username_store', crimp:'pr_username_crimp', sale:'pr_username', admin:'pr_username'};
+function getUsernameKey(){return USERNAME_KEYS[ROLE]||'pr_username';}
+function getUsername(){return localStorage.getItem(getUsernameKey())||'';}
+
+function updateUserLabel(){
+  var u=getUsername();
+  var roleLabel={store:'🏭 คลัง',crimp:'🔧 ห้องย้ำ',sale:'👔 Sale',admin:'🗂 Admin'}[ROLE]||'';
+  document.getElementById('role-user-label').textContent=roleLabel+' — '+(u||'ยังไม่ได้ตั้งชื่อ');
+  document.getElementById('role-user-label').style.color=u?'#A5C8F0':'#F87171';
+}
+
+function setUserName(){
+  var cur=getUsername();
+  var roleLabel={store:'คลัง',crimp:'ห้องย้ำ',sale:'Sale',admin:'Admin'}[ROLE]||'';
+  var n=prompt('ชื่อผู้ใช้ ['+roleLabel+'] (ใช้แสดงว่าใครอัปเดต)',cur||'');
+  if(n===null)return;
+  localStorage.setItem(getUsernameKey(),n.trim());
+  updateUserLabel();
+  toast('✅ บันทึกชื่อ ['+roleLabel+']: '+n.trim());
+}
+
+// ── CLEAR TEST DATA ──
+function clearTestData(){
+  if(!confirm('ล้างข้อมูลสถานะทั้งหมดที่บันทึกไว้ใน localStorage?\n(ข้อมูลใน Cloud/Google Sheets จะไม่ได้รับผลกระทบ)'))return;
+  var keys=[];
+  for(var i=0;i<localStorage.length;i++){
+    var k=localStorage.key(i);
+    if(k&&(k.indexOf('prtrack_')===0||k.indexOf('prjob_')===0))keys.push(k);
+  }
+  keys.forEach(function(k){localStorage.removeItem(k);});
+  TRACKING={};
+  JOB_META={active:false};
+  if(SEL)renderWorkspace();
+  renderQtList();
+  renderDashboard();
+  toast('🗑 ล้างข้อมูลทดสอบแล้ว ('+keys.length+' รายการ)');
+}
+
+// ── ROLE ──
+function switchRole(r){
+  // owner สลับได้ทุก role ไม่ถูกล็อค
+  if(typeof LOCKED_ROLE!=='undefined'&&LOCKED_ROLE&&LOCKED_ROLE!=='owner'&&r!==LOCKED_ROLE){
+    r=LOCKED_ROLE;
+  }
+  ROLE=r;
+  document.querySelectorAll('.role-btn').forEach(function(b){b.classList.toggle('active',b.dataset.role===r);});
+  updateUserLabel();
+  renderWorkspace();
+  renderDashboard();
+}
+
+// ── JSONP ──
+function gsCall(params){
+  return new Promise(function(resolve){
+    var cb='gscb_'+Date.now()+'_'+Math.floor(Math.random()*9999);
+    var qs=Object.keys(params).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(String(params[k]));}).join('&');
+    var done=false,s=document.createElement('script');
+    window[cb]=function(d){if(done)return;done=true;delete window[cb];if(s.parentNode)s.parentNode.removeChild(s);resolve(d);};
+    s.src=GS_URL+'?'+qs+'&callback='+cb;
+    s.onerror=function(){if(done)return;done=true;resolve(null);};
+    setTimeout(function(){if(done)return;done=true;if(s.parentNode)s.parentNode.removeChild(s);resolve(null);},30000);
+    document.head.appendChild(s);
+  });
+}
+
+// ── TRACKING STORAGE — GAS backend + localStorage cache ──
+// localStorage ยังคงใช้เป็น cache เพื่อความเร็ว
+// GAS เป็น source of truth ที่แชร์ข้ามเครื่องได้
+
+function trackKey(ref){return'prtrack_'+String(ref).replace(/[^a-zA-Z0-9\-]/g,'_');}
+function jobMetaKey(ref){return'prjob_'+String(ref).replace(/[^a-zA-Z0-9\-]/g,'_');}
+
+// อ่าน tracking — ลอง cache ก่อน (ใช้ตอน render) / สำหรับ fresh load ใช้ loadTrackingFromCloud
+function loadTracking(ref){
+  try{var r=localStorage.getItem(trackKey(ref));return r?JSON.parse(r):{};} catch(e){return{};}
+}
+
+// ── gsPost — ส่งข้อมูลผ่าน POST (ใช้กับ write operations ที่ data ยาว) ──
+// บันทึก tracking — เขียน cache ทันที + ส่ง GAS ผ่าน JSONP GET แบบ flat params ทีละ item (parallel)
+// ส่งเฉพาะ codes ที่ระบุ (dirtyKeys) หรือทั้งหมดถ้าไม่ระบุ
+function saveTracking(ref,data,dirtyKeys){
+  try{localStorage.setItem(trackKey(ref),JSON.stringify(data));}catch(e){}
+  var codes=dirtyKeys?Array.from(dirtyKeys):Object.keys(data||{});
+  if(!codes.length) return;
+
+  // ส่งทีละ item แบบ sequential กัน GAS throttle (ไม่ parallel)
+  function sendNext(i){
+    if(i>=codes.length) return;
+    var code=codes[i];
+    var t=data[code]||{};
+    gsCall({
+      action:'saveTrackingItem',
+      refNo:ref,
+      code:code,
+      store:t.store||'waiting',
+      storeRecv:String(t.storeRecv||''),
+      needCrimp:t.needCrimp?'1':'0',
+      crimp:t.crimp||'pending',
+      supplier:t.supplier||'',
+      note:t.note||'',
+      updatedBy:t.updatedBy||'',
+      updatedAt:t.updatedAt||'',
+      isFirst:i===0?'1':'0'
+    }).then(function(r){
+      if(r&&r.error) console.warn('saveTrackingItem error:',code,r.error);
+      sendNext(i+1); // ส่งตัวถัดไปหลังจากตัวนี้เสร็จ
+    });
+  }
+  sendNext(0);
+}
+
+// บันทึก jobMeta — เขียน cache ทันที + ส่ง GAS ผ่าน JSONP GET แบบ async
+function saveJobMeta(ref,data){
+  try{localStorage.setItem(jobMetaKey(ref),JSON.stringify(data));}catch(e){}
+  gsCall({
+    action:'saveJobMeta',
+    refNo:ref,
+    active:data.active?'1':'0',
+    activatedBy:data.activatedBy||'',
+    activatedAt:data.activatedAt||'',
+    company:data.company||'',
+    date:data.date||'',
+    itemCount:data.itemCount||'',
+    sale:data.sale||'',
+    closedBy:data.closedBy||'',
+    closedAt:data.closedAt||''
+  }).then(function(r){
+    if(!r||r.error) console.warn('saveJobMeta GAS error:',r);
+    else console.log('saveJobMeta OK:',ref,r.status);
+  });
+}
+
+// โหลด tracking จาก GAS แล้ว sync ลง cache (เรียกตอน selectQT)
+async function loadTrackingFromCloud(ref){
+  var r=await gsCall({action:'loadTracking',refNo:ref});
+  if(r&&r.status==='ok'&&r.tracking){
+    try{localStorage.setItem(trackKey(ref),JSON.stringify(r.tracking));}catch(e){}
+    return r.tracking;
+  }
+  // fallback cache
+  return loadTracking(ref);
+}
+
+// อ่าน jobMeta — ลอง cache ก่อน
+function loadJobMeta(ref){
+  try{var r=localStorage.getItem(jobMetaKey(ref));return r?JSON.parse(r):{active:false};}catch(e){return{active:false};}
+}
+
+// โหลด active jobs จาก GAS แล้ว sync cache (เรียกตอน loadCloudList)
+async function syncActiveJobsFromCloud(){
+  var r=await gsCall({action:'getAllActiveJobs'});
+  if(!r||r.status!=='ok'||!r.jobs)return;
+  r.jobs.forEach(function(job){
+    // sync ลง localStorage cache
+    var existing=loadJobMeta(job.refNo);
+    var merged=Object.assign({},existing,job);
+    try{localStorage.setItem(jobMetaKey(job.refNo),JSON.stringify(merged));}catch(e){}
+  });
+}
+
+// หา active refNos — อ่านจาก cache (sync ด้วย syncActiveJobsFromCloud ก่อนแล้ว)
+function getAllActiveRefNos(){
+  var refs=[];
+  for(var i=0;i<localStorage.length;i++){
+    var k=localStorage.key(i);
+    if(k&&k.indexOf('prjob_')===0){
+      try{
+        var meta=JSON.parse(localStorage.getItem(k));
+        if(meta&&meta.active){refs.push(meta.refNo||k.replace('prjob_',''));}
+      }catch(e){}
+    }
+  }
+  return refs;
+}
+
+// ── LOAD LIST ──
+async function loadCloudList(){
+  document.getElementById('rail-status').textContent='⏳ กำลังโหลด…';
+  toast('☁️ กำลังโหลดรายการ…');
+  var r=await gsCall({action:'getQuotations'});
+  if(!r||r.error||!r.rows){
+    document.getElementById('rail-status').textContent='❌ โหลดไม่สำเร็จ';
+    toast('❌ เชื่อมต่อ Cloud ไม่ได้'+(r&&r.error?': '+r.error:''));
+    return;
+  }
+  QTS=r.rows.map(function(x){return{
+    refNo:String(x.RefNo||'').trim(),date:x.Date||'',company:x.Company||'',
+    total:parseFloat(String(x.Total||'').replace(/,/g,''))||0,
+    items:parseInt(x.Items)||0,status:String(x.Status||'').trim(),
+    sale:x.Sale||'',name:x.Name||'',tel:x.Tel||''
+  };}).filter(function(x){return x.refNo;}).reverse();
+  document.getElementById('rail-status').textContent='✅ '+QTS.length+' ใบ · '+new Date().toLocaleTimeString('th-TH');
+  renderQtList();
+  renderDashboard();
+  toast('✅ โหลดแล้ว '+QTS.length+' ใบ · กำลัง sync งาน Active…');
+  // sync active jobs + tracking จาก Cloud → render dashboard ใหม่
+  syncActiveJobsFromCloud().then(async function(){
+    var refs=getAllActiveRefNos();
+    for(var i=0;i<refs.length;i++){
+      await loadTrackingFromCloud(refs[i]);
+    }
+    renderDashboard();
+    toast('✅ โหลดแล้ว '+QTS.length+' ใบ · Sync เสร็จแล้ว');
+  });
+}
+
+function renderQtList(){
+  var q=(document.getElementById('qt-search').value||'').toLowerCase();
+  var list=QTS.filter(function(x){return !q||x.refNo.toLowerCase().includes(q)||x.company.toLowerCase().includes(q);});
+  document.getElementById('qt-count').textContent=list.length+' ใบ';
+  var el=document.getElementById('qt-list');
+  if(!list.length){el.innerHTML='<div style="padding:14px;font-size:12px;color:var(--steel)">ไม่พบรายการ</div>';return;}
+  el.innerHTML=list.slice(0,300).map(function(x){
+    var c=stColor(x.status);
+    var tk=loadTracking(x.refNo);
+    var doneS=Object.values(tk).filter(function(v){return v.store==='arrived';}).length;
+    var doneC=Object.values(tk).filter(function(v){return v.crimp==='success';}).length;
+    var prog=x.items>0?(' · 🏭'+doneS+'/'+x.items+(doneC?' 🔧'+doneC:'')):'';
+    return '<div class="qt-item'+(SEL&&SEL.q&&SEL.q.RefNo===x.refNo?' active':'')+'" onclick="selectQT(\''+esc(x.refNo)+'\')">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline">'
+      +'<span class="ref">'+esc(x.refNo)+'</span>'
+      +'<span class="st" style="color:'+c[0]+';background:'+c[1]+'">'+(x.status||'')+'</span></div>'
+      +'<div class="co">'+esc(x.company)+'</div>'
+      +'<div class="meta"><span>'+esc(x.date)+'</span><span>'+x.items+' รายการ</span><span style="color:var(--green)">'+prog+'</span></div></div>';
+  }).join('');
+}
+
+async function loadByRefPrompt(){
+  var ref=prompt('กรอกเลขที่ใบเสนอราคา');if(!ref)return;selectQT(ref.trim());
+}
+
+// ── DASHBOARD: งานที่รออยู่ ──
+function daysAgo(dateStr){
+  if(!dateStr)return null;
+  var d=new Date(dateStr);
+  if(isNaN(d))return null;
+  var diff=Math.floor((Date.now()-d.getTime())/86400000);
+  return diff>=0?diff:null;
+}
+
+function renderDashboard(){
+  var wrap=document.getElementById('dash-wrap');
+
+  // ── เก็บ active jobs (ทุก role ใช้ฐานเดียวกัน) ──
+  var activeRefs=getAllActiveRefNos();
+  var jobs=[];
+
+  activeRefs.forEach(function(ref){
+    var meta=loadJobMeta(ref);
+    if(!meta.active||meta.closedAt)return;
+    var tk=loadTracking(ref);
+    var qInfo=QTS.find(function(x){return x.refNo===ref;});
+    // ใช้ snapshot ที่เก็บไว้ตอน Activate เท่านั้น (ห้ามใช้ qInfo.items — ตัวเลขนั้นนับรวม DELIVERY COST ที่ระบบกรองทิ้ง ทำให้ไม่ตรงกับ SEL.items จริง)
+    var company=meta.company||(qInfo?qInfo.company:'');
+    var date=meta.date||(qInfo?qInfo.date:'');
+    var touchedCount=Object.keys(tk).length;
+    var hasSnapshot=!!meta.itemCount;
+    var totalItems=hasSnapshot?meta.itemCount:touchedCount;
+
+    var storeWait=0,storeDone=0,crimpPending=0,crimpTotal=0;
+    var waitingSuppliers=[];
+    Object.keys(tk).forEach(function(code){
+      var t=tk[code];
+      if(t.store==='arrived')storeDone++; else{
+        storeWait++;
+        // เก็บ supplier ของรายการที่ยังรออยู่
+        var sup=(t.supplier||'TTT').trim();
+        if(sup&&waitingSuppliers.indexOf(sup)<0)waitingSuppliers.push(sup);
+      }
+      if(t.needCrimp){
+        crimpTotal++;
+        if(t.crimp!=='success')crimpPending++;
+      }
+    });
+    var untouched=hasSnapshot?(totalItems-touchedCount):0;
+    if(untouched>0)storeWait+=untouched;
+
+    jobs.push({
+      ref:ref, company:company, date:date,
+      sale:meta.sale||'',
+      suppliers:waitingSuppliers,
+      storeWait:storeWait, storeDone:storeDone, crimpPending:crimpPending, crimpTotal:crimpTotal,
+      totalItems:totalItems, activatedAt:meta.activatedAt, closed:false,
+      uncertain:!hasSnapshot
+    });
+  });
+
+  // ── กรองตาม role ──
+  var filtered=jobs;
+  if(ROLE==='store'){
+    filtered=jobs.filter(function(j){return j.storeWait>0||j.uncertain;});
+  } else if(ROLE==='crimp'){
+    filtered=jobs.filter(function(j){return j.crimpTotal>0&&j.crimpPending>0;});
+  } else if(ROLE==='admin'){
+    // Admin เห็นทุกใบที่ active อยู่ (รวมใบที่ครบแล้วด้วย) — ใบจะหายไปก็ต่อเมื่อ Admin กดปิดงานเองเท่านั้น
+    filtered=jobs.slice();
+  } else if(ROLE==='sale'){
+    // sale เห็นทุกใบ active (ไม่กรองว่าครบหรือยัง) — ดูภาพรวมทั้งหมด
+    filtered=jobs.slice();
+
+    // ── เพิ่มใบที่เพิ่งปิดงาน (เปิด INV แล้ว) ──
+    var closedJobs=[];
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.indexOf('prjob_')===0){
+        try{
+          var meta2=JSON.parse(localStorage.getItem(k));
+          if(meta2&&meta2.active&&meta2.closedAt){
+            var ref2=meta2.refNo||k.replace('prjob_','');
+            var qInfo2=QTS.find(function(x){return x.refNo===ref2;});
+            closedJobs.push({
+              ref:ref2, company:meta2.company||(qInfo2?qInfo2.company:''), date:meta2.date||(qInfo2?qInfo2.date:''),
+              closed:true, closedAt:meta2.closedAt, closedBy:meta2.closedBy
+            });
+          }
+        }catch(e){}
+      }
+    }
+    // เรียงปิดงานล่าสุดก่อน เอาแค่ 10 ใบล่าสุด กันรกเกินไป
+    closedJobs.sort(function(a,b){return new Date(b.closedAt)-new Date(a.closedAt);});
+    filtered=filtered.concat(closedJobs.slice(0,10));
+  }
+
+  // เรียง: active ก่อน (เก่าสุดก่อน) แล้วตามด้วย closed (ใหม่สุดก่อน)
+  filtered.sort(function(a,b){
+    if(!!a.closed!==!!b.closed)return a.closed?1:-1;
+    if(a.closed)return new Date(b.closedAt||0)-new Date(a.closedAt||0);
+    return new Date(a.activatedAt||0)-new Date(b.activatedAt||0);
+  });
+
+  var titleMap={store:'🏭 งานที่รออยู่ — คลัง',crimp:'🔧 งานที่รออยู่ — ห้องย้ำ',admin:'🗂 งาน Active ทั้งหมด — Sale Admin',sale:'👔 งานทั้งหมด — Sale'};
+  document.getElementById('dash-title').textContent=titleMap[ROLE]||'งานที่รออยู่';
+  document.getElementById('dash-count').textContent=filtered.length+' ใบ';
+
+  if(!filtered.length){
+    var emptyMsg=(ROLE==='sale'||ROLE==='admin')?'ยังไม่มีใบเสนอราคาที่ Activate':'🎉 ไม่มีงานค้างในมุมมองนี้';
+    document.getElementById('dash-list').innerHTML='<div class="dash-empty">'+emptyMsg+'</div>';
+  } else {
+    document.getElementById('dash-list').innerHTML=filtered.map(function(j){
+      if(j.closed){
+        return '<div class="dash-card is-closed" onclick="selectQT(\''+esc(j.ref)+'\')">'
+          +'<div class="stripe done"></div>'
+          +'<div class="body">'
+          +'<div class="row1"><span class="ref">'+esc(j.ref)+'</span><span class="co">'+esc(j.company)+(j.sale?' · '+esc(j.sale):'')+'</span></div>'
+          +'<div class="wait">ปิดงานโดย '+esc(j.closedBy||'-')+' · '+fmtDT(j.closedAt)+'</div>'
+          +'</div><span class="badge b-done">✅ เปิด INV แล้ว</span></div>';
+      }
+
+      var d=daysAgo(j.activatedAt);
+      var stripe='fresh';
+      if(d!==null&&d>=5)stripe='urgent';
+      else if(d!==null&&d>=2)stripe='medium';
+      var waitTxt=d===null?'เพิ่ง Activate':(d===0?'Activate วันนี้':'รออยู่ '+d+' วัน');
+
+      var badge='';
+      if(j.uncertain){
+        badge='<span class="badge b-uncertain">⚠️ ตรวจสอบรายละเอียด</span>';
+      } else if(ROLE==='store'){
+        badge='<div class="badge-stack"><span class="badge b-wait">'+j.storeDone+'/'+j.totalItems+' รับแล้ว</span>';
+        if(j.crimpTotal>0){
+          badge+='<span class="badge b-crimp-tag">🔧 ต้องย้ำด้วย</span>';
+        }
+        badge+='</div>';
+      } else if(ROLE==='crimp'){
+        var crimpDone=j.crimpTotal-j.crimpPending;
+        badge='<span class="badge b-wait">'+crimpDone+'/'+j.crimpTotal+' ย้ำแล้ว</span>';
+      } else {
+        // admin & sale: แสดงสรุปทั้งคลังและห้องย้ำ
+        var allDone=(j.storeWait===0)&&(j.crimpTotal===0||j.crimpPending===0);
+        if(allDone){
+          badge='<span class="badge b-ready">✅ พร้อมเปิด INV</span>';
+        } else {
+          var parts=[];
+          if(j.storeWait>0)parts.push('รอของ '+j.storeWait);
+          if(j.crimpPending>0)parts.push('รอย้ำ '+j.crimpPending);
+          badge='<span class="badge b-wait">'+parts.join(' · ')+'</span>';
+        }
+      }
+
+      var noteTxt=j.uncertain?'⚠️ ใบเก่า — ตัวเลขสรุปอาจไม่แม่นยำ กดเข้าไปดูในรายละเอียดเพื่อความถูกต้อง':waitTxt;
+      var supLine='';
+      if(j.suppliers&&j.suppliers.length>0&&j.storeWait>0){
+        supLine='<div style="font-size:11px;color:var(--steel);margin-top:3px">รอ Supplier: <span style="color:var(--navy);font-weight:600">'+j.suppliers.map(esc).join(' · ')+'</span></div>';
+      }
+
+      return '<div class="dash-card" onclick="selectQT(\''+esc(j.ref)+'\')">'
+        +'<div class="stripe '+stripe+'"></div>'
+        +'<div class="body">'
+        +'<div class="row1"><span class="ref">'+esc(j.ref)+'</span><span class="co">'+esc(j.company)+(j.sale?' · '+esc(j.sale):'')+'</span></div>'
+        +'<div class="wait">'+noteTxt+'</div>'
+        +supLine
+        +'</div>'+badge+'</div>';
+    }).join('');
+  }
+
+  wrap.style.display='block';
+}
+
+// ── CLOSE SELECTION (กลับไป dashboard / rail) ──
+function closeSelection(){
+  SEL=null;
+  JOB_META={active:false};
+  SELECTED_ROWS=new Set();
+  renderQtList();
+  renderWorkspace();
+}
+
+// ── SELECT QT ──
+async function selectQT(refNo){
+  toast('🔍 กำลังดึง '+refNo+' …');
+  var r=await gsCall({action:'getQuotationByRef',refNo:refNo});
+  if(!r){toast('❌ เชื่อมต่อ Cloud ไม่ได้');return;}
+  if(r.status==='not_found'){toast('❌ ไม่พบ '+refNo);return;}
+  if(r.error){toast('❌ '+r.error);return;}
+  SEL={
+    q:r.quotation||{},
+    items:(r.items||[]).map(function(it){return{
+      code:String(it['รหัสสินค้า']||it.code||'').trim(),
+      desc:String(it['รายละเอียด']||it.desc||'').trim(),
+      unit:String(it['หน่วย']||it.unit||'').trim(),
+      qty:parseFloat(it['จำนวน']||it.qty)||0
+    };}).filter(function(it){return it.code&&it.code!=='DELIVERY COST';})
+  };
+  // โหลด tracking จาก GAS cloud (แล้ว sync ลง cache อัตโนมัติ)
+  TRACKING=await loadTrackingFromCloud(refNo);
+  // โหลด jobMeta จาก GAS cloud
+  var jmr=await gsCall({action:'loadJobMeta',refNo:refNo});
+  if(jmr&&jmr.status==='ok'&&jmr.meta){
+    JOB_META=jmr.meta;
+    try{localStorage.setItem(jobMetaKey(refNo),JSON.stringify(JOB_META));}catch(e){}
+  } else {
+    JOB_META=loadJobMeta(refNo); // fallback cache
+  }
+  if(!JOB_META.refNo)JOB_META.refNo=refNo;
+  SUPPLIER_MAP={};
+  SELECTED_ROWS=new Set();
+  renderQtList();
+  renderWorkspace();
+  toast('✅ โหลด '+refNo+' ('+SEL.items.length+' รายการ)');
+
+  // ── ดึง Supplier จาก pricelog (non-blocking) ──
+  var codes=SEL.items.map(function(it){return it.code;});
+  if(codes.length>0){
+    gsCall({action:'getPricelogSuppliers', codes:JSON.stringify(codes)}).then(function(sr){
+      if(sr&&sr.suppliers){
+        SUPPLIER_MAP=sr.suppliers;
+        // normalize keys to uppercase
+        var norm={};
+        Object.keys(SUPPLIER_MAP).forEach(function(k){norm[k.toUpperCase()]=SUPPLIER_MAP[k];});
+        SUPPLIER_MAP=norm;
+        renderTable(); // re-render with supplier dropdowns
+        toast('✅ โหลด Supplier จาก pricelog แล้ว');
+      } else {
+        toast('⚠️ ดึง Supplier ไม่ได้ — ใช้ TTT เป็นค่าเริ่มต้น');
+      }
+    });
+  }
+}
+
+async function refreshTracking(){
+  if(!SEL){toast('เลือกใบเสนอราคาก่อน');return;}
+  toast('🔄 กำลังดึงข้อมูลล่าสุดจาก Cloud…');
+  // ดึงจาก Cloud เสมอ ไม่ใช้ cache
+  TRACKING=await loadTrackingFromCloud(SEL.q.RefNo);
+  // โหลด jobMeta จาก Cloud ด้วย
+  var jmr=await gsCall({action:'loadJobMeta',refNo:SEL.q.RefNo});
+  if(jmr&&jmr.status==='ok'&&jmr.meta){
+    JOB_META=jmr.meta;
+    try{localStorage.setItem(jobMetaKey(SEL.q.RefNo),JSON.stringify(JOB_META));}catch(e){}
+  }
+  renderWorkspace();
+  renderDashboard();
+  toast('🔄 รีเฟรชแล้ว — ข้อมูลล่าสุดจาก Cloud');
+}
+
+// รีเฟรช dashboard — sync active jobs จาก Cloud แล้ว render ใหม่
+async function refreshDashboard(){
+  var btn=document.getElementById('btn-dash-refresh');
+  if(btn){btn.textContent='⏳ กำลังโหลด…';btn.disabled=true;}
+  // sync job list ก่อน
+  await syncActiveJobsFromCloud();
+  // sync tracking ของทุกใบ active จาก Cloud (กัน needCrimp เก่าค้างใน cache)
+  var refs=getAllActiveRefNos();
+  for(var i=0;i<refs.length;i++){
+    await loadTrackingFromCloud(refs[i]);
+  }
+  renderDashboard();
+  if(btn){btn.textContent='🔄 รีเฟรช';btn.disabled=false;}
+  toast('🔄 Dashboard รีเฟรชแล้ว — ข้อมูลล่าสุดจาก Cloud');
+}
+
+// ── ACTIVATE / CLOSE JOB (Admin only) ──
+function activateJob(){
+  if(!SEL){toast('เลือกใบเสนอราคาก่อน');return;}
+  if(ROLE!=='admin'){toast('เฉพาะ Sale Admin เท่านั้น');return;}
+  if(!requireUser())return;
+  var crimpCount=SEL.items.filter(function(it){return(TRACKING[it.code]||{}).needCrimp;}).length;
+  var msg='ยืนยัน Activate งานนี้?\n\nลูกค้ายืนยันสั่งซื้อแล้ว — คลังและห้องย้ำจะเห็นงานนี้ในแดชบอร์ดทันที';
+  if(crimpCount>0)msg+='\n\nรายการที่ต้องย้ำ: '+crimpCount+' รายการ';
+  else msg+='\n\n⚠️ ยังไม่ได้ติ๊กรายการที่ต้องย้ำเลย — ห้องย้ำจะไม่เห็นรายการใดๆ ในใบนี้';
+  if(!confirm(msg))return;
+  JOB_META.active=true;
+  JOB_META.refNo=SEL.q.RefNo;
+  JOB_META.activatedBy=getUsername();
+  JOB_META.activatedAt=new Date().toISOString();
+  JOB_META.company=SEL.q.Company||'';
+  JOB_META.date=SEL.q.Date||'';
+  JOB_META.itemCount=SEL.items.length;
+  JOB_META.sale=SEL.q.Sale||'';  // ชื่อ Sale เจ้าของใบ
+  delete JOB_META.closedAt;
+  saveJobMeta(SEL.q.RefNo,JOB_META);
+  renderWorkspace();
+  renderQtList();
+  toast('🚀 Activate งาน '+SEL.q.RefNo+' แล้ว');
+}
+
+function closeJob(){
+  if(!SEL){return;}
+  if(ROLE!=='admin'){toast('เฉพาะ Sale Admin เท่านั้น');return;}
+  if(!confirm('ยืนยันปิดงาน '+SEL.q.RefNo+'?\n\nใบนี้จะหายจากแดชบอร์ดของทุกแผนก (ยังค้นหาเลขที่ดูย้อนหลังได้ปกติ)'))return;
+  JOB_META.closedAt=new Date().toISOString();
+  JOB_META.closedBy=getUsername();
+  saveJobMeta(SEL.q.RefNo,JOB_META);
+  renderWorkspace();
+  renderQtList();
+  renderDashboard();
+  toast('🏁 ปิดงาน '+SEL.q.RefNo+' แล้ว');
+}
+
+// ── CRIMP FLAG (Admin กำหนดว่า item ไหนต้องย้ำ) ──
+function toggleCrimpFlag(code,checked){
+  if(!SEL)return;
+  TRACKING[code]=TRACKING[code]||{};
+  TRACKING[code].needCrimp=checked;
+  saveTracking(SEL.q.RefNo,TRACKING,new Set([code]));
+}
+
+// ── RENDER WORKSPACE ──
+function renderWorkspace(){
+  if(!SEL){
+    document.getElementById('empty-ws').style.display='block';
+    document.getElementById('main-content').style.display='none';
+    renderDashboard();
+    return;
+  }
+  document.getElementById('dash-wrap').style.display='none';
+  document.getElementById('empty-ws').style.display='none';
+  document.getElementById('main-content').style.display='block';
+
+  var isActive=!!(JOB_META&&JOB_META.active&&!JOB_META.closedAt);
+  var isClosed=!!(JOB_META&&JOB_META.closedAt);
+
+  // ── Auto-patch ใบเก่าที่ Activate ไปก่อนมีระบบ snapshot ──
+  // ถ้า active อยู่แต่ไม่มี itemCount เก็บไว้ ให้เติมจากข้อมูลจริงที่เพิ่งโหลดมา (SEL.items แม่นยำเสมอ)
+  if(isActive&&!JOB_META.itemCount){
+    JOB_META.itemCount=SEL.items.length;
+    JOB_META.company=JOB_META.company||SEL.q.Company||'';
+    JOB_META.date=JOB_META.date||SEL.q.Date||'';
+    saveJobMeta(SEL.q.RefNo,JOB_META);
+  }
+
+  // active strip
+  var strip=document.getElementById('active-strip');
+  if(isClosed){
+    strip.style.display='flex';
+    strip.className='active-strip is-closed';
+    strip.textContent='🏁 ปิดงานแล้ว โดย '+(JOB_META.closedBy||'-')+' · '+fmtDT(JOB_META.closedAt);
+  } else if(isActive){
+    strip.style.display='flex';
+    strip.className='active-strip';
+    strip.textContent='🚀 Active โดย '+(JOB_META.activatedBy||'-')+' · '+fmtDT(JOB_META.activatedAt)+' — คลัง/ห้องย้ำเห็นงานนี้แล้ว';
+  } else {
+    strip.style.display='none';
+  }
+
+  // banner
+  var q=SEL.q;
+  document.getElementById('sel-banner').style.display='block';
+  document.getElementById('sb-ref').textContent=q.RefNo||'—';
+  document.getElementById('sb-co').textContent=q.Company||'';
+  document.getElementById('sb-meta').textContent=
+    'วันที่ '+(q.Date||'-')+' · ติดต่อ '+(q.Name||'-')+' · Sale '+(q.Sale||'-')+' · สถานะ '+(q.Status||'-');
+
+  // remark
+  var rem=(q.RemGen||q.Remark||q.remark||'').trim();
+  var rb=document.getElementById('remark-box');
+  if(rem){
+    rb.style.display='block';
+    document.getElementById('remark-text').textContent=rem;
+  } else {
+    rb.style.display='none';
+  }
+
+  // role chip
+  var chips={sale:['rc-sale','👔 มุมมอง Sale — ดูสถานะสินค้า'],admin:['rc-admin','🗂 Sale Admin — ตรวจสอบความครบถ้วน'],store:['rc-store','🏭 คลัง — อัปเดตสถานะรับสินค้า'],crimp:['rc-crimp','🔧 ห้องย้ำ — อัปเดตสถานะประกอบ/ย้ำ']};
+  var ch=chips[ROLE];
+  var chip=document.getElementById('role-chip');
+  chip.className='role-chip '+ch[0]; chip.textContent=ch[1];
+
+  // Activate panel — admin only, only when NOT active yet and not closed
+  document.getElementById('activate-panel').style.display=(ROLE==='admin'&&!isActive&&!isClosed)?'block':'none';
+  // Close panel — admin only, only when active
+  document.getElementById('close-panel').style.display=(ROLE==='admin'&&isActive)?'block':'none';
+
+  // summary
+  var items=SEL.items;
+  var crimpItems=items.filter(function(it){return(TRACKING[it.code]||{}).needCrimp;});
+  var storeWait=0,storeDone=0,crimpPending=0,crimpDone=0;
+  items.forEach(function(it){
+    var tk=TRACKING[it.code]||{};
+    var st=tk.store||'waiting';
+    if(st==='arrived')storeDone++; else storeWait++;
+  });
+  crimpItems.forEach(function(it){
+    var tk=TRACKING[it.code]||{};
+    var cs=tk.crimp||'pending';
+    if(cs==='success')crimpDone++; else crimpPending++;
+  });
+  var storeAll=storeWait===0&&items.length>0;
+  var crimpActive=crimpItems.length;
+  var crimpAllDone=crimpActive===0||crimpDone>=crimpActive;
+  var allReady=storeAll&&crimpAllDone;
+
+  var sb=document.getElementById('summary-bar');
+  sb.innerHTML=''
+    +'<div class="sum-card s-wait"><div class="num">'+storeWait+'</div><div class="lbl">⏳ คลัง — รอของ</div></div>'
+    +'<div class="sum-card s-store"><div class="num">'+storeDone+'</div><div class="lbl">✅ คลัง — รับแล้ว</div></div>'
+    +'<div class="sum-card s-crimp"><div class="num">'+(crimpActive>0?crimpDone+'/'+crimpActive:'ไม่มี')+'</div><div class="lbl">🔧 ห้องย้ำ — สำเร็จ</div></div>'
+    +(allReady?'<div class="sum-card s-all"><div class="num">✅ ครบ</div><div class="lbl">พร้อมเปิด INV</div></div>':'');
+
+  // INV badge (admin)
+  var ib=document.getElementById('inv-badge');
+  if(ROLE==='admin'){
+    ib.style.display='block';
+    if(allReady){
+      ib.style.cssText='display:block;background:var(--green-soft);border:2px solid var(--green);border-radius:9px;padding:9px 15px;margin-bottom:12px;font-size:13.5px;font-weight:700;color:var(--green);text-align:center';
+      ib.textContent='✅ ของครบ และย้ำเสร็จทุกรายการ — เปิด INV ได้เลย';
+    } else {
+      var reasons=[];
+      if(storeWait>0)reasons.push('รอของ '+storeWait+' รายการ');
+      if(crimpActive>0&&!crimpAllDone)reasons.push('รอประกอบ '+(crimpActive-crimpDone)+' รายการ');
+      ib.style.cssText='display:block;background:#FEF3C7;border:2px solid #D97706;border-radius:9px;padding:9px 15px;margin-bottom:12px;font-size:13.5px;font-weight:700;color:#92400E;text-align:center';
+      ib.textContent='⏳ ยังไม่พร้อม — '+(reasons.length?reasons.join(' · '):'ยังไม่ Activate งาน');
+    }
+  } else { ib.style.display='none'; }
+
+  // panels
+  document.getElementById('store-panel').style.display=(ROLE==='store'&&isActive)?'block':'none';
+  document.getElementById('crimp-panel').style.display=(ROLE==='crimp'&&isActive)?'block':'none';
+
+  renderTable();
+}
+
+// ── RENDER TABLE ──
+function renderTable(){
+  if(!SEL)return;
+  var items=SEL.items;
+  var thead=document.getElementById('tbl-head');
+  var tbody=document.getElementById('tracker-body');
+
+  // build columns per role
+  if(ROLE==='store'){
+    thead.innerHTML=''
+      +'<th style="width:28px"><input type="checkbox" id="chk-all" onchange="toggleAllRows(this.checked)"></th>'
+      +'<th>รหัสสินค้า</th><th class="desc-cell">รายละเอียด</th>'
+      +'<th style="width:60px">จำนวน</th><th style="width:55px">หน่วย</th>'
+      +'<th style="width:120px">สถานะ คลัง</th>'
+      +'<th>Supplier / หมายเหตุ</th>'
+      +'<th style="width:90px">อัปเดตโดย</th>';
+  } else if(ROLE==='crimp'){
+    thead.innerHTML=''
+      +'<th>รหัสสินค้า</th><th class="desc-cell">รายละเอียด</th>'
+      +'<th style="width:60px">จำนวน</th><th style="width:55px">หน่วย</th>'
+      +'<th style="width:110px">คลัง</th>'
+      +'<th style="width:150px">สถานะ ห้องย้ำ</th>'
+      +'<th>Supplier / หมายเหตุ</th>'
+      +'<th style="width:90px">อัปเดตโดย</th>';
+  } else if(ROLE==='admin'){
+    thead.innerHTML=''
+      +'<th>รหัสสินค้า</th><th class="desc-cell">รายละเอียด</th>'
+      +'<th style="width:60px">จำนวน</th><th style="width:55px">หน่วย</th>'
+      +'<th style="width:110px">สถานะ คลัง</th>'
+      +'<th style="width:70px;text-align:center">🔧 ต้องย้ำ</th>'
+      +'<th style="width:120px">สถานะ ห้องย้ำ</th>'
+      +'<th>Supplier / หมายเหตุ</th>'
+      +'<th style="width:110px">อัปเดตล่าสุด</th>';
+  } else { // sale
+    thead.innerHTML=''
+      +'<th>รหัสสินค้า</th><th class="desc-cell">รายละเอียด</th>'
+      +'<th style="width:60px">จำนวน</th><th style="width:55px">หน่วย</th>'
+      +'<th style="width:110px">สถานะ คลัง</th>'
+      +'<th style="width:120px">สถานะ ห้องย้ำ</th>'
+      +'<th>Supplier / หมายเหตุ</th>'
+      +'<th style="width:110px">อัปเดตล่าสุด</th>';
+  }
+
+  if(!items.length){
+    tbody.innerHTML='<tr><td colspan="9" style="padding:24px;text-align:center;color:var(--steel)">ใบเสนอราคานี้ไม่มีรายการสินค้า</td></tr>';
+    return;
+  }
+
+  // ── สำหรับห้องย้ำ: filter เฉพาะ item ที่ admin ติ๊กว่าต้องย้ำ ──
+  var visibleItems=items;
+  if(ROLE==='crimp'){
+    visibleItems=items.filter(function(it){return(TRACKING[it.code]||{}).needCrimp;});
+    if(!visibleItems.length){
+      tbody.innerHTML='<tr><td colspan="8" style="padding:24px;text-align:center;color:var(--steel)">ใบนี้ไม่มีรายการที่ต้องย้ำ</td></tr>';
+      document.getElementById('tbl-foot-info').textContent='ไม่มีรายการที่ต้องย้ำในใบนี้';
+      return;
+    }
+  }
+
+  tbody.innerHTML=visibleItems.map(function(it,i){
+    var tk=TRACKING[it.code]||{};
+    var st=tk.store||'waiting';
+    var cs=tk.crimp||'pending';
+    var needCrimp=!!tk.needCrimp;
+    var chk=SELECTED_ROWS.has(it.code);
+    var storePill=storeStatusPill(st,tk.storeRecv,it.qty);
+    var crimpPill=needCrimp?crimpStatusPill(cs):'<span class="pill pill-na">— ไม่ต้องย้ำ</span>';
+    var rowClass=(st==='arrived'&&(!needCrimp||cs==='success'))?'row-done-both':'';
+    var noteVal=esc(tk.note||'');
+    var updBy=tk.updatedBy||'—';
+    var updAt=tk.updatedAt?fmtDT(tk.updatedAt):'';
+
+    // ── Supplier cell ──
+    var savedSup=tk.supplier||'';
+    var supCell='';
+
+    if(ROLE==='admin'){
+      // Admin แก้ไขได้เสมอ ไม่ว่าจะ Activate แล้วหรือยัง
+      supCell='<div class="sup-cell">'
+        +'<input class="sup-input" value="'+esc(savedSup)+'" placeholder="พิมพ์ Supplier (ว่าง = TTT)" onchange="updateSupplier(\''+esc(it.code)+'\',this.value)">'
+        +'<input class="note-extra" value="'+noteVal+'" onchange="updateNote(\''+esc(it.code)+'\',this.value)" placeholder="หมายเหตุ…">'
+        +'</div>';
+    } else {
+      // store/crimp/sale → read-only เสมอ (แก้ได้เฉพาะ Admin)
+      var dispSup=savedSup||'TTT';
+      supCell='<div style="font-size:12px;font-weight:600;color:var(--navy)">'+esc(dispSup)+'</div>'
+        +(tk.note?'<div class="note-ro">'+esc(tk.note)+'</div>':'');
+    }
+
+    if(ROLE==='store'){
+      return '<tr class="'+rowClass+'">'
+        +'<td><input type="checkbox" '+(chk?'checked':'')+' onchange="toggleRow(\''+esc(it.code)+'\',this.checked)"></td>'
+        +'<td class="code-cell">'+esc(it.code)+'</td>'
+        +'<td class="desc-cell" style="font-size:12px">'+esc(it.desc)+'</td>'
+        +'<td class="qty-cell">'+it.qty+'</td><td class="qty-cell">'+esc(it.unit)+'</td>'
+        +'<td>'+storePill+'</td>'
+        +'<td>'+supCell+'</td>'
+        +'<td style="font-size:10.5px;color:var(--steel)">'+esc(updBy)+'<div class="stamp">'+updAt+'</div></td>'
+        +'</tr>';
+    } else if(ROLE==='crimp'){
+      return '<tr class="'+rowClass+'">'
+        +'<td class="code-cell">'+esc(it.code)+'</td>'
+        +'<td class="desc-cell" style="font-size:12px">'+esc(it.desc)+'</td>'
+        +'<td class="qty-cell">'+it.qty+'</td><td class="qty-cell">'+esc(it.unit)+'</td>'
+        +'<td>'+storePill+'</td>'
+        +'<td><div class="crimp-btns">'
+          +'<button class="cb cb-success" onclick="setCrimp(\''+esc(it.code)+'\',\'success\')">✅ สำเร็จ</button>'
+          +'<button class="cb cb-pending" onclick="setCrimp(\''+esc(it.code)+'\',\'pending\')">⏳ รอ</button>'
+        +'</div>'
+        +'<div style="margin-top:4px">'+crimpPill+'</div></td>'
+        +'<td>'+supCell+'</td>'
+        +'<td style="font-size:10.5px;color:var(--steel)">'+esc(updBy)+'<div class="stamp">'+updAt+'</div></td>'
+        +'</tr>';
+    } else if(ROLE==='admin'){
+      return '<tr class="'+rowClass+'">'
+        +'<td class="code-cell">'+esc(it.code)+'</td>'
+        +'<td class="desc-cell" style="font-size:12px">'+esc(it.desc)+'</td>'
+        +'<td class="qty-cell">'+it.qty+'</td><td class="qty-cell">'+esc(it.unit)+'</td>'
+        +'<td>'+storePill+'</td>'
+        +'<td class="crimp-flag-cell"><input type="checkbox" '+(needCrimp?'checked':'')+' onchange="toggleCrimpFlag(\''+esc(it.code)+'\',this.checked)"></td>'
+        +'<td>'+crimpPill+'</td>'
+        +'<td>'+supCell+'</td>'
+        +'<td style="font-size:10.5px;color:var(--steel)">'+esc(updBy)+'<div class="stamp">'+updAt+'</div></td>'
+        +'</tr>';
+    } else {
+      // sale: read-only
+      return '<tr class="'+rowClass+'">'
+        +'<td class="code-cell">'+esc(it.code)+'</td>'
+        +'<td class="desc-cell" style="font-size:12px">'+esc(it.desc)+'</td>'
+        +'<td class="qty-cell">'+it.qty+'</td><td class="qty-cell">'+esc(it.unit)+'</td>'
+        +'<td>'+storePill+'</td>'
+        +'<td>'+crimpPill+'</td>'
+        +'<td>'+supCell+'</td>'
+        +'<td style="font-size:10.5px;color:var(--steel)">'+esc(updBy)+'<div class="stamp">'+updAt+'</div></td>'
+        +'</tr>';
+    }
+  }).join('');
+
+  // footer
+  var storeDone=items.filter(function(it){return(TRACKING[it.code]||{}).store==='arrived';}).length;
+  var crimpItemsAll=items.filter(function(it){return(TRACKING[it.code]||{}).needCrimp;});
+  var crimpDoneAll=crimpItemsAll.filter(function(it){return(TRACKING[it.code]||{}).crimp==='success';}).length;
+  document.getElementById('tbl-foot-info').textContent=
+    'คลัง: รับแล้ว '+storeDone+'/'+items.length+' รายการ  ·  ห้องย้ำ: สำเร็จ '+crimpDoneAll+'/'+crimpItemsAll.length+' รายการที่ต้องย้ำ';
+}
+
+function storeStatusPill(st,recv,total){
+  if(st==='arrived')return'<span class="pill pill-arrived">✅ รับแล้ว</span>';
+  if(st==='partial'){var l=recv&&total?recv+'/'+total:'บางส่วน';return'<span class="pill pill-partial">📦 '+l+'</span>';}
+  return'<span class="pill pill-wait">⏳ รอของ</span>';
+}
+function crimpStatusPill(cs){
+  if(cs==='success')return'<span class="pill pill-success">✅ สำเร็จ</span>';
+  return'<span class="pill pill-pending">⏳ รอประกอบ</span>';
+}
+
+// ── ROW SELECT (store) ──
+function toggleRow(code,checked){if(checked)SELECTED_ROWS.add(code);else SELECTED_ROWS.delete(code);}
+function toggleAllRows(checked){
+  if(!SEL)return;
+  if(checked)SEL.items.forEach(function(it){SELECTED_ROWS.add(it.code);});
+  else SELECTED_ROWS.clear();
+  renderTable();
+}
+
+// ── UPDATE HELPERS ──
+function requireUser(){
+  var u=getUsername();
+  if(!u){
+    var roleLabel={store:'คลัง',crimp:'ห้องย้ำ',sale:'Sale',admin:'Admin'}[ROLE]||'';
+    toast('⚠️ กรุณาตั้งชื่อผู้ใช้ ['+roleLabel+'] ก่อน');
+    setUserName();
+    return !!getUsername();
+  }
+  return true;
+}
+function touchTracking(code){
+  TRACKING[code]=TRACKING[code]||{};
+  TRACKING[code].updatedBy=getUsername();
+  TRACKING[code].updatedAt=new Date().toISOString();
+}
+
+// ── STORE UPDATE ──
+function bulkStore(status){
+  if(!SEL){toast('เลือกใบเสนอราคาก่อน');return;}
+  if(!requireUser())return;
+  if(status==='partial'&&SELECTED_ROWS.size===1){
+    var code=Array.from(SELECTED_ROWS)[0];
+    var it=SEL.items.find(function(x){return x.code===code;});
+    if(it){openPartialModal(code,it.qty);return;}
+  }
+  if(SELECTED_ROWS.size===0){
+    if(!confirm('ไม่ได้เลือกรายการ — ต้องการอัปเดตทุกรายการ?'))return;
+    SEL.items.forEach(function(it){SELECTED_ROWS.add(it.code);});
+  }
+  var note=document.getElementById('store-note').value.trim();
+  var dirty=new Set();
+  var count=0;
+  SELECTED_ROWS.forEach(function(code){
+    TRACKING[code]=TRACKING[code]||{};
+    TRACKING[code].store=status;
+    if(note)TRACKING[code].note=note;
+    touchTracking(code);
+    dirty.add(code);
+    count++;
+  });
+  saveTracking(SEL.q.RefNo,TRACKING,dirty);
+  SELECTED_ROWS.clear();
+  renderTable();renderWorkspace();renderQtList();
+  var lbl={arrived:'✅ รับแล้ว',waiting:'⏳ รอของ',partial:'📦 บางส่วน'}[status]||status;
+  toast('อัปเดต '+count+' รายการ → '+lbl);
+  document.getElementById('store-note').value='';
+}
+
+// ── CRIMP UPDATE ──
+function setCrimp(code,status){
+  if(!requireUser())return;
+  TRACKING[code]=TRACKING[code]||{};
+  TRACKING[code].crimp=status;
+  touchTracking(code);
+  saveTracking(SEL.q.RefNo,TRACKING,new Set([code]));
+  renderTable();renderWorkspace();renderQtList();
+  var lbl={success:'✅ สำเร็จ',pending:'⏳ รอประกอบ'}[status]||status;
+  toast(code+' → '+lbl);
+}
+
+function updateNote(code,note){
+  if(!SEL)return;
+  TRACKING[code]=TRACKING[code]||{};
+  TRACKING[code].note=note;
+  var u=getUsername();
+  if(u)touchTracking(code);
+  saveTracking(SEL.q.RefNo,TRACKING);
+}
+
+function updateSupplier(code,val){
+  if(!SEL)return;
+  val=String(val||'').trim();
+  TRACKING[code]=TRACKING[code]||{};
+  TRACKING[code].supplier=val;
+  var u=getUsername();
+  if(u)touchTracking(code);
+  saveTracking(SEL.q.RefNo,TRACKING,new Set([code]));
+  toast('💾 Supplier ['+code+']: '+(val||'TTT'));
+}
+
+// ── PARTIAL MODAL ──
+function openPartialModal(code,totalQty){
+  MODAL_TARGET=code;
+  document.getElementById('m-code').value=code;
+  document.getElementById('m-total').value=totalQty;
+  document.getElementById('m-recv').value='';
+  document.getElementById('m-note').value=(TRACKING[code]||{}).note||'';
+  document.getElementById('modal-bg').classList.add('show');
+}
+function closeModal(){document.getElementById('modal-bg').classList.remove('show');MODAL_TARGET=null;}
+function confirmPartial(){
+  var code=MODAL_TARGET;if(!code)return;
+  var recv=parseFloat(document.getElementById('m-recv').value)||0;
+  var note=document.getElementById('m-note').value.trim();
+  var it=SEL.items.find(function(x){return x.code===code;});
+  var total=it?it.qty:0;
+  TRACKING[code]=TRACKING[code]||{};
+  TRACKING[code].store=recv>=total&&total>0?'arrived':'partial';
+  TRACKING[code].storeRecv=recv;
+  if(note)TRACKING[code].note=note;
+  touchTracking(code);
+  saveTracking(SEL.q.RefNo,TRACKING,new Set([code]));
+  closeModal();SELECTED_ROWS.clear();
+  renderTable();renderWorkspace();renderQtList();
+  toast('📦 บันทึกรับบางส่วน: '+code+' ('+recv+'/'+total+')');
+}
+document.getElementById('modal-bg').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+// ── LOGIN ──
+var SESSION_KEY='pr_session';
+
+function getSession(){
+  try{var s=localStorage.getItem(SESSION_KEY);return s?JSON.parse(s):null;}catch(e){return null;}
+}
+function saveSession(data){
+  try{localStorage.setItem(SESSION_KEY,JSON.stringify(data));}catch(e){}
+}
+function clearSession(){
+  try{localStorage.removeItem(SESSION_KEY);}catch(e){}
+}
+
+async function doLogin(){
+  var uEl=document.getElementById('login-user');
+  var pEl=document.getElementById('login-pwd');
+  var errEl=document.getElementById('login-err');
+  var btn=document.getElementById('login-btn');
+  var u=(uEl.value||'').trim();
+  var p=(pEl.value||'').trim();
+  if(!u||!p){showLoginErr('กรุณาใส่ username และ password');return;}
+  btn.textContent='⏳ กำลังตรวจสอบ…';btn.disabled=true;
+  errEl.style.display='none';
+  var r=await gsCall({action:'login',username:u,password:p});
+  btn.textContent='เข้าสู่ระบบ';btn.disabled=false;
+  if(!r){showLoginErr('เชื่อมต่อ Server ไม่ได้ กรุณาลองใหม่');return;}
+  if(r.status!=='ok'){showLoginErr(r.msg||'Login ไม่สำเร็จ');return;}
+  // บันทึก session
+  saveSession({username:r.username,role:r.role,displayName:r.displayName});
+  applySession(r);
+}
+
+function showLoginErr(msg){
+  var el=document.getElementById('login-err');
+  el.textContent=msg; el.style.display='block';
+}
+
+function applySession(s){
+  if(!s)return;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('main-app').style.display='block';
+
+  // owner เห็นทุก role สลับได้ — ไม่ล็อค
+  if(s.role==='owner'){
+    LOCKED_ROLE=null;
+    // แสดงปุ่มสลับ role ครบ ไม่ซ่อน
+    document.getElementById('role-bar-lbl').style.display='';
+    VALID_ROLES.forEach(function(rr){
+      var btn=document.getElementById('rolebtn-'+rr);
+      if(btn)btn.style.display='';
+    });
+  } else {
+    // role อื่น → ล็อคและซ่อนปุ่ม
+    LOCKED_ROLE=s.role;
+    document.getElementById('role-bar-lbl').style.display='none';
+    VALID_ROLES.forEach(function(rr){
+      var btn=document.getElementById('rolebtn-'+rr);
+      if(btn)btn.style.display='none';
+    });
+    document.getElementById('btn-clear-test').style.display='none';
+    var lockLbl=document.getElementById('role-locked-label');
+    lockLbl.style.display='inline-block';
+    lockLbl.textContent=ROLE_NAMES[s.role]||(s.displayName||s.username);
+  }
+
+  // ตั้ง username จาก session
+  var uKey=USERNAME_KEYS[s.role]||'pr_username';
+  localStorage.setItem(uKey, s.displayName||s.username);
+
+  // เพิ่มปุ่ม logout (กันซ้ำ)
+  if(!document.getElementById('btn-logout')){
+    var logoutBtn=document.createElement('button');
+    logoutBtn.id='btn-logout';
+    logoutBtn.className='btn btn-ghost';
+    logoutBtn.style.cssText='padding:4px 10px;font-size:11px;color:#F87171';
+    logoutBtn.textContent='🚪 ออกจากระบบ';
+    logoutBtn.onclick=doLogout;
+    document.getElementById('role-bar').appendChild(logoutBtn);
+  }
+
+  // อัปเดต user label
+  document.getElementById('role-user-label').textContent=(ROLE_NAMES[s.role]||'')+' — '+(s.displayName||s.username);
+  document.getElementById('role-user-label').style.color='#A5C8F0';
+
+  switchRole(s.role==='owner'?'sale':s.role);
+  updateUserLabel();
+}
+
+function doLogout(){
+  if(!confirm('ออกจากระบบ?'))return;
+  clearSession();
+  location.reload();
+}
+
+// ── INIT ──
+var VALID_ROLES=['sale','admin','store','crimp','owner'];
+var ROLE_NAMES={sale:'👔 Sale',admin:'🗂 Sale Admin',store:'🏭 คลัง',crimp:'🔧 ห้องย้ำ',owner:'👑 Owner'};
+var LOCKED_ROLE=null;
+
+(function initApp(){
+  // เช็ค session ที่บันทึกไว้
+  var session=getSession();
+  if(session&&session.role&&session.username){
+    // มี session → เข้าระบบได้เลย
+    applySession(session);
+  } else {
+    // ไม่มี session → แสดงหน้า login
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('main-app').style.display='none';
+    // focus ที่ช่อง username
+    setTimeout(function(){
+      var el=document.getElementById('login-user');
+      if(el)el.focus();
+    },100);
+  }
+})();
+</script>
+</div><!-- end main-app -->
+
+</body>
+</html>
